@@ -21,6 +21,7 @@ var _ = require('underscore');
 var config = require('./config');
 var routes = require('./app/routes');
 var Character = require('./models/character');
+var Colleague = require('./models/colleague');
 
 var app = express();
 
@@ -236,72 +237,26 @@ app.get('/api/characters/:id', function(req, res, next) {
 });
 
 /**
- * POST /api/characters
- * Adds new character to the database.
+ * POST /api/colleagues
+ * Adds new colleague to the database.
  */
-app.post('/api/characters', function(req, res, next) {
+app.post('/api/colleagues', function(req, res, next) {
   var gender = req.body.gender;
-  var characterName = req.body.name;
-  var characterIdLookupUrl = 'https://api.eveonline.com/eve/CharacterID.xml.aspx?names=' + characterName;
+  var colleagueName = req.body.name;
+  var colleagueShortName = req.body.shortName;
 
-  var parser = new xml2js.Parser();
 
-  async.waterfall([
-    function(callback) {
-      request.get(characterIdLookupUrl, function(err, request, xml) {
-        if (err) return next(err);
-        parser.parseString(xml, function(err, parsedXml) {
-          if (err) return next(err);
-          try {
-            var characterId = parsedXml.eveapi.result[0].rowset[0].row[0].$.characterID;
+  var colleague = new Colleague({
+      colleagueId: Math.floor(Math.random() * 10000),
+      name: colleagueName,
+      shortName: colleagueShortName,
+      gender: gender,
+  });
 
-            Character.findOne({ characterId: characterId }, function(err, character) {
-              if (err) return next(err);
-
-              if (character) {
-                return res.status(409).send({ message: character.name + ' is already in the database.' });
-              }
-
-              callback(err, characterId);
-            });
-          } catch (e) {
-            return res.status(400).send({ message: 'XML Parse Error' });
-          }
-        });
-      });
-    },
-    function(characterId) {
-      var characterInfoUrl = 'https://api.eveonline.com/eve/CharacterInfo.xml.aspx?characterID=' + characterId;
-
-      request.get({ url: characterInfoUrl }, function(err, request, xml) {
-        if (err) return next(err);
-        parser.parseString(xml, function(err, parsedXml) {
-          if (err) return res.send(err);
-          try {
-            var name = parsedXml.eveapi.result[0].characterName[0];
-            var race = parsedXml.eveapi.result[0].race[0];
-            var bloodline = parsedXml.eveapi.result[0].bloodline[0];
-
-            var character = new Character({
-              characterId: characterId,
-              name: name,
-              race: race,
-              bloodline: bloodline,
-              gender: gender,
-              random: [Math.random(), 0]
-            });
-
-            character.save(function(err) {
-              if (err) return next(err);
-              res.send({ message: characterName + ' has been added successfully!' });
-            });
-          } catch (e) {
-            res.status(404).send({ message: characterName + ' is not a registered citizen of New Eden.' });
-          }
-        });
-      });
-    }
-  ]);
+  colleague.save(function(err) {
+    if (err) return next(err);
+    res.send({ message: colleagueName + ' has been added successfully!' });
+  });
 });
 
 /**
